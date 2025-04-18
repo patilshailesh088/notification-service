@@ -21,18 +21,28 @@ public class KafkaConsumerConfiguration {
 
     @Bean
     public ConsumerFactory<String, EmployeeOnboardingEvent> consumerFactory() {
-        JsonDeserializer<EmployeeOnboardingEvent> deserializer = new JsonDeserializer<>(EmployeeOnboardingEvent.class);
-        deserializer.setUseTypeHeaders(false);
-        deserializer.addTrustedPackages("*");
-        deserializer.setUseTypeMapperForKey(false);
+//        JsonDeserializer<EmployeeOnboardingEvent> deserializer = new JsonDeserializer<>(EmployeeOnboardingEvent.class);
+//        deserializer.setUseTypeHeaders(false);
+//        deserializer.addTrustedPackages("*");
+//        deserializer.setUseTypeMapperForKey(true);
 
         Map<String,Object> consumerProps = new HashMap<>();
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-group");
+
+        // Tell Kafka to use ErrorHandlingDeserializer, which wraps the JsonDeserializer
         consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        consumerProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+//        Kafka requires messages to be in byte format, so to transmit our Java object, we serialize it into JSON using Spring’s JsonSerializer.
+//On the consumer side, we deserialize it back into the original object using JsonDeserializer, so we can access the data fields directly in Java and trigger things like sending an email.
 
-        return new DefaultKafkaConsumerFactory<>(consumerProps, new StringDeserializer(), deserializer);
+        // JsonDeserializer specific config
+        consumerProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        consumerProps.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.pisyst.pmt.Notification_Service.dto.EmployeeOnboardingEvent");
+        consumerProps.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+
+        return new DefaultKafkaConsumerFactory<>(consumerProps);
     }
 
     @Bean
